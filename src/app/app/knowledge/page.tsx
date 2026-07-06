@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   FileText,
@@ -19,24 +19,7 @@ import { Label } from '@/components/ui/Label';
 import { Document } from '@/types';
 
 export default function KnowledgePage() {
-  const [documents, setDocuments] = useState<Document[]>(() => [
-    {
-      id: 'doc_seed_1',
-      knowledgeSourceId: 'ks_default',
-      title: 'Company_Policy_Guidelines_2026.pdf',
-      content: 'Standard operating guidelines for company policy and employee support guidelines.',
-      metadata: { size: '1.2MB', pages: 14, extension: 'pdf' },
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'doc_seed_2',
-      knowledgeSourceId: 'ks_default',
-      title: 'VoiceOS_REST_API_Reference.md',
-      content: 'API specifications and schema layouts for outbound REST webhooks integrations.',
-      metadata: { size: '345KB', extension: 'md' },
-      createdAt: new Date().toISOString()
-    }
-  ]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
   
@@ -46,27 +29,51 @@ export default function KnowledgePage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleUpload = (e: React.FormEvent) => {
+  const loadDocuments = async () => {
+    try {
+      const res = await fetch('/api/documents');
+      if (res.ok) {
+        const result = await res.json();
+        setDocuments(result.data);
+      }
+    } catch (e) {
+      console.error('Failed to load documents:', e);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDocuments();
+  }, []);
+
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fileName || !fileContent) return;
 
     setLoading(true);
-    setTimeout(() => {
+    setSuccessMsg('');
+
+    try {
       const ext = fileName.split('.').pop() || 'txt';
-      const sizeBytes = Math.floor(Math.random() * 800000) + 100000;
+      const sizeBytes = fileContent.length;
       const sizeFormatted = `${(sizeBytes / 1024).toFixed(1)} KB`;
 
-      const newDoc: Document = {
-        id: `doc_${Math.random().toString(36).substring(2, 11)}`,
-        knowledgeSourceId: 'ks_default',
-        title: fileName,
-        content: fileContent,
-        metadata: { size: sizeFormatted, extension: ext },
-        createdAt: new Date().toISOString()
-      };
+      const res = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: fileName,
+          content: fileContent,
+          metadata: { size: sizeFormatted, extension: ext },
+        }),
+      });
 
-      setDocuments([...documents, newDoc]);
-      setLoading(false);
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to upload document.');
+      }
+
+      await loadDocuments();
       setSuccessMsg('Document successfully parsed and chunked for vector indexing.');
       setFileName('');
       setFileContent('');
@@ -75,11 +82,24 @@ export default function KnowledgePage() {
         setSuccessMsg('');
         setShowUploadModal(false);
       }, 1500);
-    }, 1000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setDocuments(documents.filter(doc => doc.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/documents?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await loadDocuments();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const filteredDocs = documents.filter((doc) =>

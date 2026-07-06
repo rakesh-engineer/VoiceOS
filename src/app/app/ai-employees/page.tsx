@@ -121,12 +121,16 @@ export default function AIEmployeesPage() {
   const handleStatusToggle = async (emp: AIEmployee) => {
     const nextStatus: AIEmployee['status'] = emp.status === 'Active' ? 'Paused' : 'Active';
     try {
-      await fetch('/api/employees', {
-        method: 'POST', 
+      const res = await fetch('/api/employees', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: emp.id, status: nextStatus }),
       });
-      // Update local state directly for simulation
-      const updated: AIEmployee = { ...emp, status: nextStatus };
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update employee status.');
+      }
+      const updated = result.data as AIEmployee;
       setEmployees(employees.map(e => e.id === emp.id ? updated : e));
       setSelectedEmp(updated);
     } catch (e) {

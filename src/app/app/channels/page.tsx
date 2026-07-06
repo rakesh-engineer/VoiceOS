@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Network,
   Phone,
@@ -19,63 +19,83 @@ import { Label } from '@/components/ui/Label';
 import { Channel } from '@/types';
 
 export default function ChannelsPage() {
-  const [channels, setChannels] = useState<Channel[]>(() => [
-    {
-      id: 'chan_twilio_office',
-      organizationId: 'org_seed',
-      workspaceId: 'ws_seed',
-      name: 'Main Twilio Office Hotline (+1 800-555-0199)',
-      type: 'Voice',
-      isActive: true,
-      config: { provider: 'Twilio', number: '+1 800-555-0199', status: 'Healthy' },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    },
-    {
-      id: 'chan_whatsapp_outbound',
-      organizationId: 'org_seed',
-      workspaceId: 'ws_seed',
-      name: 'WhatsApp Business Outreach Gateway',
-      type: 'WhatsApp',
-      isActive: true,
-      config: { provider: 'Meta Cloud API', status: 'Healthy' },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-  ]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedChannelType, setSelectedChannelType] = useState<'Voice' | 'WhatsApp' | 'Chat' | 'Email'>('Voice');
   const [channelName, setChannelName] = useState('');
   const [telephonyNumber, setTelephonyNumber] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleCreateChannel = (e: React.FormEvent) => {
+  const loadChannels = async () => {
+    try {
+      const res = await fetch('/api/channels');
+      if (res.ok) {
+        const result = await res.json();
+        setChannels(result.data);
+      }
+    } catch (e) {
+      console.error('Failed to load channels:', e);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadChannels();
+  }, []);
+
+  const handleCreateChannel = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      const newChan: Channel = {
-        id: `chan_${Math.random().toString(36).substring(2, 11)}`,
-        organizationId: 'org_seed',
-        workspaceId: 'ws_seed',
-        name: selectedChannelType === 'Voice' ? `${channelName} (${telephonyNumber})` : channelName,
-        type: selectedChannelType,
-        isActive: true,
-        config: { provider: selectedChannelType === 'Voice' ? 'Twilio' : 'Meta Business API', status: 'Healthy' },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+    try {
+      const name = selectedChannelType === 'Voice' ? `${channelName} (${telephonyNumber})` : channelName;
+      const res = await fetch('/api/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          type: selectedChannelType,
+          config: { provider: selectedChannelType === 'Voice' ? 'Twilio' : 'Meta Business API', status: 'Healthy' }
+        }),
+      });
 
-      setChannels([...channels, newChan]);
-      setLoading(false);
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create channel.');
+      }
+
+      await loadChannels();
       setShowConfigModal(false);
       setChannelName('');
       setTelephonyNumber('');
-    }, 800);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const toggleChannel = (id: string) => {
-    setChannels(channels.map(c => c.id === id ? { ...c, isActive: !c.isActive } : c));
+  const toggleChannel = async (id: string) => {
+    const channel = channels.find(c => c.id === id);
+    if (!channel) return;
+
+    try {
+      const res = await fetch('/api/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_status',
+          id,
+          isActive: !channel.isActive
+        }),
+      });
+
+      if (res.ok) {
+        await loadChannels();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const channelIcons: Record<string, React.ReactNode> = {

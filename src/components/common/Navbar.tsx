@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Menu, X, PhoneCall } from 'lucide-react';
 import { useScrollTo } from '@/hooks/useScrollTo';
 import { Button } from '@/components/ui/Button';
@@ -84,7 +85,13 @@ export default function Navbar() {
           </div>
 
           {/* CTA */}
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:flex items-center space-x-4">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Login
+            </Link>
             <Button
               variant="secondary"
               size="sm"
@@ -92,6 +99,14 @@ export default function Navbar() {
             >
               Book Demo
             </Button>
+            <Link href="/signup">
+              <Button
+                variant="primary"
+                size="sm"
+              >
+                Get Started
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -152,10 +167,20 @@ export default function Navbar() {
           >
             Why Us
           </button>
-          <div className="pt-4 pb-2 px-3 w-full">
+          <div className="pt-4 pb-2 px-3 w-full flex flex-col gap-2.5">
+            <Link href="/login" onClick={() => setIsOpen(false)} className="w-full">
+              <Button variant="secondary" className="w-full py-2.5">
+                Login
+              </Button>
+            </Link>
+            <Link href="/signup" onClick={() => setIsOpen(false)} className="w-full">
+              <Button variant="primary" className="w-full py-2.5">
+                Get Started
+              </Button>
+            </Link>
             <Button
-              variant="primary"
-              className="w-full py-3"
+              variant="secondary"
+              className="w-full py-2.5"
               onClick={() => { setIsOpen(false); scrollTo('demo'); }}
             >
               Book Demo

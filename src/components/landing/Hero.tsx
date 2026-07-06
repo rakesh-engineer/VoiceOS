@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import Link from 'next/link';
 import { Play, Pause, PhoneCall, Sparkles, Database, MessageSquare, Calendar, ArrowRight } from 'lucide-react';
 import { mockTranscript } from '@/constants/landingData';
 import { useScrollTo } from '@/hooks/useScrollTo';
@@ -51,13 +51,22 @@ export default function Hero() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
+              <Link href="/signup">
+                <Button
+                  variant="primary"
+                  size="lg"
+                >
+                  Get Started
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+
               <Button
-                variant="primary"
+                variant="secondary"
                 size="lg"
                 onClick={() => scrollTo('demo')}
               >
                 Book Demo
-                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
 
               <Button

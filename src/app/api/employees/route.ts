@@ -102,3 +102,102 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const sessionCookie = request.cookies.get('voiceos_session');
+    if (!sessionCookie?.value) {
+      return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
+    const session = await authService.verifySession(sessionCookie.value);
+    if (!session || !session.orgId || !session.role) {
+      return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
+    // RBAC: require Developer role or higher to update employees
+    const isAuthorized = authService.hasRoleRequired(session.role, 'Developer' as UserRole);
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden. You lack Developer permissions.' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Employee ID is required.' }, { status: 400 });
+    }
+
+    // Verify employee belongs to the organization
+    const employee = await employeeRepo.findById(id);
+    if (!employee || employee.organizationId !== session.orgId) {
+      return NextResponse.json({ success: false, error: 'Employee not found or access denied.' }, { status: 404 });
+    }
+
+    const updatedEmployee = await employeeRepo.update(id, updates);
+
+    return NextResponse.json({
+      success: true,
+      data: updatedEmployee,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: unknown) {
+    console.error('[Employees API PUT] Error:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Failed to update employee.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const sessionCookie = request.cookies.get('voiceos_session');
+    if (!sessionCookie?.value) {
+      return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
+    const session = await authService.verifySession(sessionCookie.value);
+    if (!session || !session.orgId || !session.role) {
+      return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+    }
+
+    // RBAC: require Developer role or higher to delete employees
+    const isAuthorized = authService.hasRoleRequired(session.role, 'Developer' as UserRole);
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden. You lack Developer permissions.' },
+        { status: 403 }
+      );
+    }
+
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Employee ID is required.' }, { status: 400 });
+    }
+
+    // Verify employee belongs to the organization
+    const employee = await employeeRepo.findById(id);
+    if (!employee || employee.organizationId !== session.orgId) {
+      return NextResponse.json({ success: false, error: 'Employee not found or access denied.' }, { status: 404 });
+    }
+
+    await employeeRepo.delete(id);
+
+    return NextResponse.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: unknown) {
+    console.error('[Employees API DELETE] Error:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Failed to delete employee.' },
+      { status: 500 }
+    );
+  }
+}
