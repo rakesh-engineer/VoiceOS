@@ -141,4 +141,44 @@ export class OrganizationRepository implements IOrganizationRepository {
       })
       .filter((item): item is { user: User; role: UserRole } => item !== null);
   }
+
+  async update(id: string, name: string, slug: string): Promise<Organization | null> {
+    const dbUrl = process.env.DATABASE_URL;
+
+    if (dbUrl) {
+      const result = await db.query<Organization>(
+        'UPDATE organizations SET name = $1, slug = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING id, name, slug, created_at as "createdAt", updated_at as "updatedAt"',
+        [name, slug, id]
+      );
+      return result.rows[0] || null;
+    }
+
+    const orgIndex = memoryDb.organizations.findIndex((o) => o.id === id);
+    if (orgIndex > -1) {
+      memoryDb.organizations[orgIndex].name = name;
+      memoryDb.organizations[orgIndex].slug = slug;
+      memoryDb.organizations[orgIndex].updatedAt = new Date().toISOString();
+      return memoryDb.organizations[orgIndex];
+    }
+    return null;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const dbUrl = process.env.DATABASE_URL;
+
+    if (dbUrl) {
+      await db.query('DELETE FROM organizations WHERE id = $1', [id]);
+      return true;
+    }
+
+    const orgIndex = memoryDb.organizations.findIndex((o) => o.id === id);
+    if (orgIndex > -1) {
+      memoryDb.organizations.splice(orgIndex, 1);
+      // Clean memberships and workspaces
+      memoryDb.members = memoryDb.members.filter((m) => m.organizationId !== id);
+      memoryDb.workspaces = memoryDb.workspaces.filter((w) => w.organizationId !== id);
+      return true;
+    }
+    return false;
+  }
 }

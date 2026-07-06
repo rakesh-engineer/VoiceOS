@@ -28,7 +28,7 @@ export class AutomationService {
    */
   async triggerWorkflow(options: WorkflowTriggerOptions): Promise<AutomationResult> {
     const selectedEngine = options.engine || 'n8n';
-    const targetUrl = options.endpointUrl || config.n8n.demoWebhookUrl || config.n8n.webhookUrl;
+    const targetUrl = options.endpointUrl || config.server.n8nServerWebhookUrl || config.n8n.demoWebhookUrl || config.n8n.webhookUrl;
 
     console.log(`[AutomationService] Dispatching workflow execution via [${selectedEngine}] to ${targetUrl || 'local dry-run'}`);
 

@@ -1,9 +1,4 @@
-/**
- * VoiceOS - Database Client Manager
- * Dual-Mode Client: Runs live queries when DATABASE_URL is configured,
- * otherwise falls back to a simulated in-memory store for isolated local development and Vercel builds.
- */
-
+import { Pool } from 'pg';
 import { DemoRequest, Organization, User, AIEmployee, UserRole, Workspace } from '@/types';
 
 class MemoryDatabase {
@@ -71,7 +66,7 @@ class MemoryDatabase {
 }
 
 // Global reference for memory db persistence across Next.js hot-reloads
-const globalRef = global as unknown as { memoryDb?: MemoryDatabase };
+const globalRef = global as unknown as { memoryDb?: MemoryDatabase; pgPool?: Pool };
 if (!globalRef.memoryDb) {
   globalRef.memoryDb = new MemoryDatabase();
 }
@@ -87,11 +82,14 @@ export const db = {
 
     if (dbUrl) {
       console.log(`[Database] Routing query to live PostgreSQL pool: ${text.slice(0, 50)}... (Params: ${params.length})`);
-      // Here, you would load pg and execute query:
-      // const { Pool } = require('pg');
-      // const pool = new Pool({ connectionString: dbUrl });
-      // return pool.query(text, params);
-      return { rows: [] };
+      if (!globalRef.pgPool) {
+        globalRef.pgPool = new Pool({
+          connectionString: dbUrl,
+          ssl: dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1') ? undefined : { rejectUnauthorized: false },
+        });
+      }
+      const result = await globalRef.pgPool.query(text, params);
+      return { rows: result.rows as T[] };
     }
 
     console.warn('[Database] DATABASE_URL not set. Running in Local Memory Database mode.');

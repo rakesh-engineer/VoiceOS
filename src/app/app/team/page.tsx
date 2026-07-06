@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
@@ -26,11 +26,7 @@ interface MemberItem {
 }
 
 export default function TeamPage() {
-  const [members, setMembers] = useState<MemberItem[]>(() => [
-    { id: 'usr_seed_1', name: 'Alex Founder', email: 'founder@acme.com', role: 'Owner', status: 'Active' },
-    { id: 'usr_seed_2', name: 'Jane Admin', email: 'jane@acme.com', role: 'Admin', status: 'Active' },
-    { id: 'usr_seed_3', name: 'Bob Dev', email: 'bob@acme.com', role: 'Developer', status: 'Active' }
-  ]);
+  const [members, setMembers] = useState<MemberItem[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>('Viewer');
@@ -38,22 +34,54 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleInvite = (e: React.FormEvent) => {
+  useEffect(() => {
+    async function loadTeam() {
+      try {
+        const res = await fetch('/api/orgs');
+        if (res.ok) {
+          const result = await res.json();
+          setMembers(result.data.members.map((m: { userId: string; name: string; email: string; role: UserRole }) => ({
+            id: m.userId,
+            name: m.name,
+            email: m.email,
+            role: m.role,
+            status: 'Active'
+          })));
+        }
+      } catch (err) {
+        console.error('Failed to load team:', err);
+      }
+    }
+    loadTeam();
+  }, []);
+
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
 
     setLoading(true);
-    setTimeout(() => {
+    setSuccessMsg('');
+
+    try {
+      const res = await fetch('/api/orgs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'invite_member', email: inviteEmail, role: inviteRole, name: inviteName }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to send invitation.');
+      }
+      
       const newMember: MemberItem = {
-        id: `mem_${Math.random().toString(36).substring(2, 11)}`,
-        name: inviteName || 'Pending Invite',
-        email: inviteEmail,
-        role: inviteRole,
-        status: 'Pending'
+        id: result.data.member.userId,
+        name: result.data.member.name,
+        email: result.data.member.email,
+        role: result.data.member.role,
+        status: 'Active'
       };
 
       setMembers([...members, newMember]);
-      setLoading(false);
       setSuccessMsg('Invitation successfully dispatched.');
       setInviteEmail('');
       setInviteName('');
@@ -63,7 +91,11 @@ export default function TeamPage() {
         setSuccessMsg('');
         setShowInviteModal(false);
       }, 1500);
-    }, 800);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRoleChange = (id: string, role: UserRole) => {

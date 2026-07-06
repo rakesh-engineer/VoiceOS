@@ -26,7 +26,7 @@ interface WorkspaceItem {
 }
 
 export default function OrganizationPage() {
-  const [org, setOrg] = useState<OrganizationState | null>(null);
+  const [, setOrg] = useState<OrganizationState | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [orgName, setOrgName] = useState('');
   const [orgSlug, setOrgSlug] = useState('');
@@ -56,38 +56,55 @@ export default function OrganizationPage() {
     loadOrgData();
   }, []);
 
-  const handleUpdateOrg = (e: React.FormEvent) => {
+  const handleUpdateOrg = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSuccessMsg('');
 
-    setTimeout(() => {
-      if (org) {
-        setOrg({ ...org, name: orgName, slug: orgSlug });
+    try {
+      const res = await fetch('/api/orgs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: orgName, slug: orgSlug }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update organization.');
       }
-      setLoading(false);
+      setOrg(result.data.organization);
       setSuccessMsg('Organization settings updated successfully.');
       setTimeout(() => setSuccessMsg(''), 2000);
-    }, 800);
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreateWorkspace = (e: React.FormEvent) => {
+  const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWsName) return;
 
     setWsLoading(true);
-    setTimeout(() => {
-      const slug = newWsSlug || newWsName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const newWs: WorkspaceItem = {
-        id: `ws_${Math.random().toString(36).substring(2, 11)}`,
-        name: newWsName,
-        slug
-      };
 
-      setWorkspaces([...workspaces, newWs]);
-      setWsLoading(false);
+    try {
+      const res = await fetch('/api/orgs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_workspace', name: newWsName, slug: newWsSlug }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create workspace.');
+      }
+      setWorkspaces([...workspaces, result.data.workspace]);
       setNewWsName('');
       setNewWsSlug('');
-    }, 800);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setWsLoading(false);
+    }
   };
 
   return (

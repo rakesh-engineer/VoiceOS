@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   Key,
@@ -18,38 +18,67 @@ import { Label } from '@/components/ui/Label';
 interface ApiKeyItem {
   id: string;
   name: string;
-  prefix: string;
+  keyPrefix: string;
   createdAt: string;
 }
 
 export default function SettingsPage() {
-  const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>(() => [
-    { id: 'key_1', name: 'n8n Production Sync Webhook', prefix: 'sk_live_v1', createdAt: new Date().toLocaleDateString() }
-  ]);
+  const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
   const [newKeyName, setNewKeyName] = useState('');
   const [generatedKey, setGeneratedKey] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [activeSubTab, setActiveSubTab] = useState<'keys' | 'billing' | 'branding' | 'integrations'>('keys');
 
-  const handleCreateKey = (e: React.FormEvent) => {
+  const loadKeys = async () => {
+    try {
+      const res = await fetch('/api/keys');
+      if (res.ok) {
+        const result = await res.json();
+        setApiKeys(result.data);
+      }
+    } catch (e) {
+      console.error('Failed to load keys:', e);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadKeys();
+  }, []);
+
+  const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKeyName) return;
 
-    const mockKeyString = `sk_live_v1_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-    const newKey: ApiKeyItem = {
-      id: `key_${Math.random().toString(36).substring(2, 11)}`,
-      name: newKeyName,
-      prefix: 'sk_live_v1',
-      createdAt: new Date().toLocaleDateString()
-    };
-
-    setApiKeys([...apiKeys, newKey]);
-    setGeneratedKey(mockKeyString);
-    setNewKeyName('');
+    try {
+      const res = await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newKeyName }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to generate key.');
+      }
+      setGeneratedKey(result.data.plaintextKey);
+      await loadKeys();
+      setNewKeyName('');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleDeleteKey = (id: string) => {
-    setApiKeys(apiKeys.filter(k => k.id !== id));
+  const handleDeleteKey = async (id: string) => {
+    try {
+      const res = await fetch(`/api/keys?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await loadKeys();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -178,7 +207,7 @@ export default function SettingsPage() {
                     <div key={k.id} className="py-3 flex items-center justify-between text-xs hover:bg-zinc-900/20 px-2 rounded-lg transition-colors gap-4">
                       <div>
                         <p className="font-bold text-white">{k.name}</p>
-                        <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Prefix: {k.prefix} | Created: {k.createdAt}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Prefix: {k.keyPrefix} | Created: {k.createdAt}</p>
                       </div>
                       <button
                         onClick={() => handleDeleteKey(k.id)}

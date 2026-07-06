@@ -14,6 +14,8 @@ export interface IOrganizationRepository {
   createWorkspace(orgId: string, name: string, slug: string): Promise<Workspace>;
   addMember(orgId: string, userId: string, role: UserRole): Promise<void>;
   getMembers(orgId: string): Promise<Array<{ user: User; role: UserRole }>>;
+  update(id: string, name: string, slug: string): Promise<Organization | null>;
+  delete(id: string): Promise<boolean>;
 }
 
 export interface IEmployeeRepository {
