@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
-import { config } from '@/config';
 import { DemoRequestData } from '@/types';
+import { DemoRepository } from '@/repositories/demoRepository';
+import { AutomationService } from '@/services/automationService';
+
+const demoRepo = new DemoRepository();
+const automationService = new AutomationService();
 
 /**
  * Next.js API Route Handler proxying demo request submissions to external systems (n8n).
@@ -11,7 +15,7 @@ export async function POST(request: Request) {
     const body: DemoRequestData = await request.json();
 
     // 1. Server-side Validation
-    const { name, company, email, phone } = body;
+    const { name, company, email, phone, message } = body;
     if (!name || !company || !email || !phone) {
       return NextResponse.json(
         { success: false, error: 'Missing required field parameters.' },
@@ -28,49 +32,57 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. n8n Routing
-    // Check for server-side webhook URL first (fallback to client-safe env var if configured)
-    const targetWebhook = config.server.n8nServerWebhookUrl || config.n8n.demoWebhookUrl;
+    // 2. Database Insertion (Real Postgres DDL or Memory DB Fallback)
+    const savedRecord = await demoRepo.save({
+      name,
+      company,
+      email,
+      phone,
+      message: message || '',
+    });
 
-    if (!targetWebhook) {
-      // Offline fallback: simulate server connection
-      console.warn(
-        'Server-side n8n webhook URL is not configured. Request logged locally:',
-        body
-      );
+    // 3. Automation Layer Dispatcher (n8n, Temporal, or LangGraph adapter)
+    const automationResult = await automationService.triggerWorkflow({
+      engine: 'n8n', // Configurable engine
+      payload: {
+        id: savedRecord.id,
+        name: savedRecord.name,
+        company: savedRecord.company,
+        email: savedRecord.email,
+        phone: savedRecord.phone,
+        message: savedRecord.message,
+        status: savedRecord.status,
+        dbCreatedAt: savedRecord.dbCreatedAt,
+      },
+    });
 
-      // Simulate slight processing overhead
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
+    if (!automationResult.success) {
+      console.error('[Demo API] Workflow trigger failed but DB record was saved:', automationResult.error);
+      // Update status to failed in DB for auditing
+      await demoRepo.updateStatus(savedRecord.id, 'Failed');
       return NextResponse.json({
         success: true,
-        message: 'Request processed locally. Ready for webhook integration.',
+        data: {
+          id: savedRecord.id,
+          status: 'Failed',
+          dbCreatedAt: savedRecord.dbCreatedAt,
+          warning: 'Database saved but workflow trigger failed.',
+        },
         timestamp: new Date().toISOString(),
       });
     }
 
-    // Forwarding payload to n8n
-    const response = await fetch(targetWebhook, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...body,
-        source: 'VoiceOS Secure API Proxy',
-        submittedAt: new Date().toISOString(),
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`External service responded with status: ${response.status}`);
-    }
-
-    const result = await response.json().catch(() => ({}));
+    // Update status to Processed in DB
+    const processedRecord = await demoRepo.updateStatus(savedRecord.id, 'Processed');
 
     return NextResponse.json({
       success: true,
-      data: result,
+      data: {
+        id: processedRecord?.id || savedRecord.id,
+        status: processedRecord?.status || 'Processed',
+        dbCreatedAt: processedRecord?.dbCreatedAt || savedRecord.dbCreatedAt,
+        executionId: automationResult.executionId,
+      },
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
