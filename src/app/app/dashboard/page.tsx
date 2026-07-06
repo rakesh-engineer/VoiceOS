@@ -26,19 +26,14 @@ interface MetricCard {
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<MetricCard[]>(() => [
-    { title: 'AI Employees Deployed', value: '1', change: 'Draft to Active', isPositive: true, icon: <BrainCircuit className="h-5 w-5 text-violet-400" /> },
-    { title: 'Active Channels Connected', value: '2', change: 'Voice & WhatsApp', isPositive: true, icon: <Link2 className="h-5 w-5 text-indigo-400" /> },
-    { title: "Today's Call Engagements", value: '142', change: '+12.4% vs yesterday', isPositive: true, icon: <Phone className="h-5 w-5 text-emerald-450" /> },
-    { title: "Today's SMS & Chat Lines", value: '891', change: '+24.1% vs yesterday', isPositive: true, icon: <MessageSquare className="h-5 w-5 text-cyan-400" /> },
-    { title: 'Workflow Actions Run', value: '1,204', change: '99.8% Success Rate', isPositive: true, icon: <Workflow className="h-5 w-5 text-amber-400" /> },
+    { title: 'AI Employees Deployed', value: '0', change: 'Operational', isPositive: true, icon: <BrainCircuit className="h-5 w-5 text-violet-400" /> },
+    { title: 'Active Channels Connected', value: '0', change: 'Operational', isPositive: true, icon: <Link2 className="h-5 w-5 text-indigo-400" /> },
+    { title: "Today's Call Engagements", value: '0', change: 'Operational', isPositive: true, icon: <Phone className="h-5 w-5 text-emerald-450" /> },
+    { title: "Today's Workspaces Partition", value: '0', change: 'Operational', isPositive: true, icon: <MessageSquare className="h-5 w-5 text-cyan-400" /> },
+    { title: 'Workflow Actions Run', value: '0', change: 'Operational', isPositive: true, icon: <Workflow className="h-5 w-5 text-amber-400" /> },
   ]);
 
-  const [latestActivity, setLatestActivity] = useState<Array<{ id: string; time: string; type: string; details: string }>>(() => [
-    { id: '1', time: '10 mins ago', type: 'Call Ended', details: 'Call completed by Sarah with Lead #4321. Outcome: Scheduled.' },
-    { id: '2', time: '25 mins ago', type: 'Intake Saved', details: 'Book Demo request submitted by Alex (GlobeX). Saved to Database.' },
-    { id: '3', time: '1 hour ago', type: 'Workflow Run', details: 'n8n Sync execution: Updated lead score to 95 for Alex (GlobeX).' },
-    { id: '4', time: '3 hours ago', type: 'Config Changed', details: 'System prompt updated for Sarah (Enterprise Support Agent).' },
-  ]);
+  const [latestActivity, setLatestActivity] = useState<Array<{ id: string; time: string; type: string; details: string }>>(() => []);
 
   useEffect(() => {
     async function loadDashboard() {

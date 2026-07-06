@@ -3,6 +3,8 @@ import { AuthService } from '@/services/authService';
 import { db } from '@/database/client';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 const authService = new AuthService();
 
 // Memory store fallback for API keys

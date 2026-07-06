@@ -3,6 +3,8 @@ import { AuthService } from '@/services/authService';
 import { DocumentRepository } from '@/repositories/documentRepository';
 import { db } from '@/database/client';
 
+export const dynamic = 'force-dynamic';
+
 const authService = new AuthService();
 const docRepo = new DocumentRepository();
 

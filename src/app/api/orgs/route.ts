@@ -3,6 +3,8 @@ import { AuthService } from '@/services/authService';
 import { OrganizationRepository } from '@/repositories/orgRepository';
 import { UserRepository } from '@/repositories/userRepository';
 
+export const dynamic = 'force-dynamic';
+
 const authService = new AuthService();
 const orgRepo = new OrganizationRepository();
 const userRepo = new UserRepository();

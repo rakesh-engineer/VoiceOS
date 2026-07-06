@@ -85,9 +85,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [router]);
 
   const handleLogout = async () => {
-    // Session logout: delete cookie
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    // Invalidate client cookies & redirect to landing page
     document.cookie = 'voiceos_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    router.push('/login');
+    router.push('/');
     router.refresh();
   };
 

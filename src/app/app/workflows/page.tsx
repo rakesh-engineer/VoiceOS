@@ -64,7 +64,7 @@ export default function WorkflowsPage() {
           </h1>
           <p className="text-xs text-zinc-400">Sync with n8n, LangGraph, and webhook pipelines to orchestrate systems.</p>
         </div>
-        <Button variant="secondary" size="sm" className="flex items-center space-x-1.5 opacity-50 cursor-not-allowed">
+        <Button disabled variant="secondary" size="sm" className="flex items-center space-x-1.5 opacity-50 cursor-not-allowed">
           <Plus className="h-4 w-4" />
           <span>New Workflow</span>
         </Button>

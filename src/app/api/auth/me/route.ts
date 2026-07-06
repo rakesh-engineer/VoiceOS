@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { AuthService } from '@/services/authService';
 
+export const dynamic = 'force-dynamic';
+
 const authService = new AuthService();
 
 export async function GET(request: NextRequest) {

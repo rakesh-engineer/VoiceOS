@@ -1,8 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { AuthService } from '@/services/authService';
-import { db } from '@/database/client';
+import { db, memoryDb } from '@/database/client';
+import { ChannelRepository } from '@/repositories/channelRepository';
+
+export const dynamic = 'force-dynamic';
 
 const authService = new AuthService();
+const channelRepo = new ChannelRepository();
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
       );
       const channelsCount = parseInt(channelsRes.rows[0]?.count || '0');
 
-      // 4. Fetch Call Count (Simulated via logs or direct calls table count)
+      // 4. Fetch Call Count (Empty database returns 0)
       const callsRes = await db.query<{ count: string }>(
         'SELECT COUNT(*) as count FROM calls WHERE organization_id = $1',
         [session.orgId]
@@ -75,28 +79,26 @@ export async function GET(request: NextRequest) {
           channelsCount,
           callsCount,
           workflowsCount,
-          activities: activities.length > 0 ? activities : [
-            { id: '1', time: '10 mins ago', type: 'Intake Saved', details: 'Database connection verified. Active organization operational.' }
-          ]
+          activities
         }
       });
     }
 
-    // Local dry-run simulated data fallback
+    // Local dry-run simulated data fallback - MUST calculate counts dynamically from memoryDb collections
+    const employeesCount = memoryDb.employees.filter((e) => e.organizationId === session.orgId).length;
+    const workspacesCount = memoryDb.workspaces.filter((w) => w.organizationId === session.orgId).length;
+    const allChannels = await channelRepo.findByOrgId(session.orgId);
+    const channelsCount = allChannels.filter((c) => c.isActive).length;
+
     return NextResponse.json({
       success: true,
       data: {
-        employeesCount: 1,
-        workspacesCount: 1,
-        channelsCount: 2,
-        callsCount: 142,
-        workflowsCount: 1204,
-        activities: [
-          { id: '1', time: '10 mins ago', type: 'Call Ended', details: 'Call completed by Sarah with Lead #4321. Outcome: Scheduled.' },
-          { id: '2', time: '25 mins ago', type: 'Intake Saved', details: 'Book Demo request submitted by Alex (GlobeX). Saved to Database.' },
-          { id: '3', time: '1 hour ago', type: 'Workflow Run', details: 'n8n Sync execution: Updated lead score to 95 for Alex (GlobeX).' },
-          { id: '4', time: '3 hours ago', type: 'Config Changed', details: 'System prompt updated for Sarah (Enterprise Support Agent).' },
-        ]
+        employeesCount,
+        workspacesCount,
+        channelsCount,
+        callsCount: 0,
+        workflowsCount: 0,
+        activities: []
       }
     });
   } catch (error: unknown) {

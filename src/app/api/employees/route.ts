@@ -4,6 +4,8 @@ import { EmployeeRepository } from '@/repositories/employeeRepository';
 import { OrganizationRepository } from '@/repositories/orgRepository';
 import { UserRole } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 const authService = new AuthService();
 const employeeRepo = new EmployeeRepository();
 const orgRepo = new OrganizationRepository();
